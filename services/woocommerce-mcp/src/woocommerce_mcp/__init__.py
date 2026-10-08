@@ -1,0 +1,1 @@
+"""WooCommerce MCP Server package."""

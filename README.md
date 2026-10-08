@@ -60,17 +60,17 @@ cp .env.example .env
 
 After setup, add these entries to `/etc/hosts`:
 ```
-127.0.0.1  store.nexusmcp.local
-127.0.0.1  api.nexusmcp.local
-127.0.0.1  app.nexusmcp.local
+127.0.0.1  store.nexusmcp.local:9080
+127.0.0.1  api.nexusmcp.local:9080
+127.0.0.1  app.nexusmcp.local:9080
 ```
 
 | URL | Service |
 |---|---|
-| http://store.nexusmcp.local | WordPress / WooCommerce storefront |
-| http://app.nexusmcp.local | NexusMCP Dashboard |
-| http://api.nexusmcp.local/mcp | MCP Gateway endpoint |
-| http://api.nexusmcp.local/docs | Gateway API docs |
+| http://store.nexusmcp.local:9080 | WordPress / WooCommerce storefront |
+| http://app.nexusmcp.local:9080 | NexusMCP Dashboard |
+| http://api.nexusmcp.local:9080/mcp | MCP Gateway endpoint |
+| http://api.nexusmcp.local:9080/docs | Gateway API docs |
 
 ---
 
