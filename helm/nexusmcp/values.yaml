@@ -1,0 +1,164 @@
+# ── Global ────────────────────────────────────────────────────
+global:
+  domain: nexusmcp.local
+  imageRegistry: ""          # Set to your registry prefix in production
+  imagePullPolicy: IfNotPresent
+  storageClass: "standard"   # kind default StorageClass
+
+# ── Namespace ─────────────────────────────────────────────────
+namespace: nexusmcp
+
+# ── Secrets reference (values are populated from nexusmcp-secrets k8s Secret) ──
+secretName: nexusmcp-secrets
+
+# ── LLM Provider ──────────────────────────────────────────────
+llm:
+  provider: "gemini"         # gemini | ollama
+  geminiModel: "gemini-2.0-flash"
+  ollamaModel: "llama3.1"
+  # ollamaBaseUrl is read from the nexusmcp-secrets Secret
+
+# ── PostgreSQL (Platform DB) ──────────────────────────────────
+postgres:
+  enabled: true
+  image: postgres:16-alpine
+  database: nexusmcp
+  user: nexusmcp
+  # password from secretName
+  storage:
+    size: 5Gi
+  resources:
+    requests:
+      cpu: "250m"
+      memory: "256Mi"
+    limits:
+      cpu: "500m"
+      memory: "512Mi"
+
+# ── MariaDB (WordPress) ───────────────────────────────────────
+mariadb:
+  enabled: true
+  image: mariadb:11
+  database: wordpress
+  user: wordpress
+  # password and rootPassword from secretName
+  storage:
+    size: 10Gi
+  resources:
+    requests:
+      cpu: "250m"
+      memory: "256Mi"
+    limits:
+      cpu: "500m"
+      memory: "512Mi"
+
+# ── WordPress ─────────────────────────────────────────────────
+wordpress:
+  enabled: true
+  image: wordpress:6.7-php8.3-apache
+  adminUser: admin
+  adminEmail: admin@example.com
+  # adminPassword from secretName
+  storage:
+    size: 5Gi
+  resources:
+    requests:
+      cpu: "250m"
+      memory: "256Mi"
+    limits:
+      cpu: "1"
+      memory: "512Mi"
+  ingress:
+    host: "store.nexusmcp.local"
+
+# ── WooCommerce MCP Server ────────────────────────────────────
+woocommerceMcp:
+  enabled: true
+  image: nexusmcp/woocommerce-mcp:latest
+  port: 8001
+  replicas: 1
+  resources:
+    requests:
+      cpu: "100m"
+      memory: "128Mi"
+    limits:
+      cpu: "500m"
+      memory: "256Mi"
+
+# ── Time MCP Server ───────────────────────────────────────────
+timeMcp:
+  enabled: true
+  image: nexusmcp/time-mcp:latest
+  port: 8002
+  replicas: 1
+  resources:
+    requests:
+      cpu: "50m"
+      memory: "64Mi"
+    limits:
+      cpu: "200m"
+      memory: "128Mi"
+
+# ── Fetch MCP Server ──────────────────────────────────────────
+fetchMcp:
+  enabled: true
+  image: nexusmcp/fetch-mcp:latest
+  port: 8003
+  replicas: 1
+  resources:
+    requests:
+      cpu: "50m"
+      memory: "64Mi"
+    limits:
+      cpu: "200m"
+      memory: "128Mi"
+
+# ── Gateway ───────────────────────────────────────────────────
+gateway:
+  enabled: true
+  image: nexusmcp/gateway:latest
+  port: 8000
+  replicas: 1
+  resources:
+    requests:
+      cpu: "250m"
+      memory: "256Mi"
+    limits:
+      cpu: "1"
+      memory: "512Mi"
+  ingress:
+    host: "api.nexusmcp.local"
+
+# ── Frontend Dashboard ────────────────────────────────────────
+frontend:
+  enabled: true
+  image: nexusmcp/frontend:latest
+  port: 3000
+  replicas: 1
+  resources:
+    requests:
+      cpu: "50m"
+      memory: "64Mi"
+    limits:
+      cpu: "200m"
+      memory: "128Mi"
+  ingress:
+    host: "app.nexusmcp.local"
+
+# ── Ollama (optional in-cluster deployment) ───────────────────
+ollama:
+  enabled: false
+  image: ollama/ollama:latest
+  port: 11434
+  model: llama3.1
+  resources:
+    requests:
+      cpu: "2"
+      memory: "8Gi"
+    limits:
+      cpu: "4"
+      memory: "16Gi"
+
+# ── NetworkPolicies ───────────────────────────────────────────
+networkPolicies:
+  enabled: true

@@ -1,0 +1,43 @@
+# values-local.yaml — Overrides for local kind cluster
+# Merges with values.yaml
+
+global:
+  storageClass: "standard"   # kind's default StorageClass
+  imagePullPolicy: IfNotPresent
+
+# Use smaller storage for local dev
+postgres:
+  storage:
+    size: 2Gi
+
+mariadb:
+  storage:
+    size: 5Gi
+
+wordpress:
+  storage:
+    size: 2Gi
+
+# Use locally built images (not pushed to a registry)
+woocommerceMcp:
+  image: nexusmcp/woocommerce-mcp:local
+
+timeMcp:
+  image: nexusmcp/time-mcp:local
+
+fetchMcp:
+  image: nexusmcp/fetch-mcp:local
+
+gateway:
+  image: nexusmcp/gateway:local
+
+frontend:
+  image: nexusmcp/frontend:local
+
+# NetworkPolicies may be limited in kind; enable for fidelity
+networkPolicies:
+  enabled: true
+
+# LLM: default to gemini locally; override to ollama for offline dev
+llm:
+  provider: "gemini"

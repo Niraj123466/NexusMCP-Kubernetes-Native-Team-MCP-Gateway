@@ -1,0 +1,36 @@
+# values-production.yaml — Overrides for k3s VPS
+# Merges with values.yaml
+
+global:
+  storageClass: "local-path"  # k3s default StorageClass
+  imagePullPolicy: Always      # Always pull from registry in production
+
+# Larger storage for production
+postgres:
+  storage:
+    size: 20Gi
+
+mariadb:
+  storage:
+    size: 50Gi
+
+wordpress:
+  storage:
+    size: 20Gi
+
+# Production resource bumps
+gateway:
+  replicas: 2
+  resources:
+    limits:
+      cpu: "2"
+      memory: "1Gi"
+
+# NetworkPolicies enforced in production
+networkPolicies:
+  enabled: true
+
+# LLM: use Gemini in production (or configure Ollama on GPU node)
+llm:
+  provider: "gemini"
+  geminiModel: "gemini-2.5-pro"
