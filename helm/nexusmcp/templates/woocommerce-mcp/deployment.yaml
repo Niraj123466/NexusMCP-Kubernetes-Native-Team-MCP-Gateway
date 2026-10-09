@@ -1,0 +1,58 @@
+{{- if .Values.woocommerceMcp.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: woocommerce-mcp
+  namespace: {{ .Values.namespace }}
+  labels:
+    app: woocommerce-mcp
+    component: mcp-upstream
+spec:
+  replicas: {{ .Values.woocommerceMcp.replicas }}
+  selector:
+    matchLabels:
+      app: woocommerce-mcp
+  template:
+    metadata:
+      labels:
+        app: woocommerce-mcp
+        component: mcp-upstream
+    spec:
+      containers:
+        - name: woocommerce-mcp
+          image: {{ .Values.woocommerceMcp.image }}
+          imagePullPolicy: {{ .Values.global.imagePullPolicy }}
+          ports:
+            - containerPort: {{ .Values.woocommerceMcp.port }}
+              name: mcp
+          env:
+            - name: WC_URL
+              value: "http://wordpress-svc/wp-json/wc/v3"
+            - name: WC_CONSUMER_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.secretName }}
+                  key: WC_CONSUMER_KEY
+            - name: WC_CONSUMER_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.secretName }}
+                  key: WC_CONSUMER_SECRET
+            - name: PORT
+              value: {{ .Values.woocommerceMcp.port | quote }}
+            - name: HOST
+              value: "0.0.0.0"
+          resources:
+            {{- toYaml .Values.woocommerceMcp.resources | nindent 12 }}
+          readinessProbe:
+            tcpSocket:
+              port: {{ .Values.woocommerceMcp.port }}
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            failureThreshold: 5
+          livenessProbe:
+            tcpSocket:
+              port: {{ .Values.woocommerceMcp.port }}
+            initialDelaySeconds: 15
+            periodSeconds: 15
+{{- end }}
