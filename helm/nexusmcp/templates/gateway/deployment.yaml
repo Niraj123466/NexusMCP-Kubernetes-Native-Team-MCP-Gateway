@@ -1,0 +1,88 @@
+{{- if .Values.gateway.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gateway
+  namespace: {{ .Values.namespace }}
+  labels:
+    app: gateway
+    component: api
+spec:
+  replicas: {{ .Values.gateway.replicas }}
+  selector:
+    matchLabels:
+      app: gateway
+  template:
+    metadata:
+      labels:
+        app: gateway
+        component: api
+    spec:
+      containers:
+        - name: gateway
+          image: {{ .Values.gateway.image }}
+          imagePullPolicy: {{ .Values.global.imagePullPolicy }}
+          ports:
+            - containerPort: {{ .Values.gateway.port }}
+              name: http
+          env:
+            - name: POSTGRES_HOST
+              value: "postgres-svc"
+            - name: POSTGRES_PORT
+              value: "5432"
+            - name: POSTGRES_DB
+              value: {{ .Values.postgres.database | quote }}
+            - name: POSTGRES_USER
+              value: {{ .Values.postgres.user | quote }}
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.secretName }}
+                  key: POSTGRES_PASSWORD
+            - name: GATEWAY_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.secretName }}
+                  key: GATEWAY_SECRET_KEY
+            - name: LLM_PROVIDER
+              value: {{ .Values.llm.provider | quote }}
+            - name: GEMINI_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.secretName }}
+                  key: GEMINI_API_KEY
+                  optional: true
+            - name: GEMINI_MODEL
+              value: {{ .Values.llm.geminiModel | quote }}
+            - name: OLLAMA_BASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.secretName }}
+                  key: OLLAMA_BASE_URL
+                  optional: true
+            - name: OLLAMA_MODEL
+              value: {{ .Values.llm.ollamaModel | quote }}
+            - name: WOOCOMMERCE_MCP_URL
+              value: "http://woocommerce-mcp-svc:8001/mcp"
+            - name: TIME_MCP_URL
+              value: "http://time-mcp-svc:8002/mcp"
+            - name: FETCH_MCP_URL
+              value: "http://fetch-mcp-svc:8003/mcp"
+            - name: SSRF_INTERNAL_ALLOWLIST
+              value: "woocommerce-mcp-svc,time-mcp-svc,fetch-mcp-svc"
+          resources:
+            {{- toYaml .Values.gateway.resources | nindent 12 }}
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: {{ .Values.gateway.port }}
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            failureThreshold: 6
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: {{ .Values.gateway.port }}
+            initialDelaySeconds: 15
+            periodSeconds: 10
+{{- end }}

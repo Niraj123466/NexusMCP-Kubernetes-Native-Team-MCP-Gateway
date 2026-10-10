@@ -94,6 +94,47 @@ async def _seed_admin() -> None:
             log.info("seeded_first_admin", username="admin", admin_api_key=raw_key)
 
 
+async def _seed_default_upstreams() -> None:
+    """Register the default internal MCP servers (woocommerce, time, fetch) if table is empty."""
+    from gateway.db.models import UpstreamServer, User
+
+    async with AsyncSessionLocal() as db:
+        res = await db.execute(text("SELECT COUNT(*) FROM upstream_servers"))
+        count = res.scalar_one()
+        if count == 0:
+            admin_res = await db.execute(text("SELECT id FROM users ORDER BY created_at ASC LIMIT 1"))
+            admin_id = admin_res.scalar_one_or_none()
+            if not admin_id:
+                return
+
+            default_servers = [
+                UpstreamServer(
+                    slug="woocommerce",
+                    name="WooCommerce Store",
+                    url=settings.woocommerce_mcp_url,
+                    description="WooCommerce product and order management operations",
+                    created_by=admin_id,
+                ),
+                UpstreamServer(
+                    slug="time",
+                    name="Time Service",
+                    url=settings.time_mcp_url,
+                    description="Current date, time, and IANA timezone utilities",
+                    created_by=admin_id,
+                ),
+                UpstreamServer(
+                    slug="fetch",
+                    name="Web Fetcher",
+                    url=settings.fetch_mcp_url,
+                    description="Safe remote web page and API content fetcher with SSRF guard",
+                    created_by=admin_id,
+                ),
+            ]
+            db.add_all(default_servers)
+            await db.commit()
+            log.info("seeded_default_upstreams", count=len(default_servers))
+
+
 from contextlib import asynccontextmanager
 from collections.abc import AsyncGenerator
 
@@ -111,6 +152,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
             await conn.run_sync(Base.metadata.create_all)
 
     await _seed_admin()
+    await _seed_default_upstreams()
     log.info("gateway_ready")
 
     yield  # ── running ───────────────────────────────────────
@@ -140,9 +182,15 @@ app.add_middleware(
 )
 
 # ── Routers ───────────────────────────────────────────────────
+from gateway.routers import audit, keys, tools, upstreams, users
+from gateway.mcp import proxy
+
 app.include_router(users.router)
 app.include_router(keys.router)
-# Future phases will add: upstreams, audit, chat, mcp proxy
+app.include_router(upstreams.router)
+app.include_router(audit.router)
+app.include_router(tools.router)
+app.include_router(proxy.router)
 
 
 @app.get("/health", tags=["health"])
