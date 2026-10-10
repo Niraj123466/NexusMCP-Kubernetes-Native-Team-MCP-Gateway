@@ -1,0 +1,46 @@
+{{- if .Values.timeMcp.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: time-mcp
+  namespace: {{ .Values.namespace }}
+  labels:
+    app: time-mcp
+    component: mcp-upstream
+spec:
+  replicas: {{ .Values.timeMcp.replicas }}
+  selector:
+    matchLabels:
+      app: time-mcp
+  template:
+    metadata:
+      labels:
+        app: time-mcp
+        component: mcp-upstream
+    spec:
+      containers:
+        - name: time-mcp
+          image: {{ .Values.timeMcp.image }}
+          imagePullPolicy: {{ .Values.global.imagePullPolicy }}
+          ports:
+            - containerPort: {{ .Values.timeMcp.port }}
+              name: mcp
+          env:
+            - name: PORT
+              value: {{ .Values.timeMcp.port | quote }}
+            - name: HOST
+              value: "0.0.0.0"
+          resources:
+            {{- toYaml .Values.timeMcp.resources | nindent 12 }}
+          readinessProbe:
+            tcpSocket:
+              port: {{ .Values.timeMcp.port }}
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            failureThreshold: 5
+          livenessProbe:
+            tcpSocket:
+              port: {{ .Values.timeMcp.port }}
+            initialDelaySeconds: 15
+            periodSeconds: 15
+{{- end }}

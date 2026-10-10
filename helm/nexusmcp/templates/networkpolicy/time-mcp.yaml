@@ -1,0 +1,25 @@
+{{- if and .Values.networkPolicies.enabled .Values.timeMcp.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: time-mcp-netpol
+  namespace: {{ .Values.namespace }}
+  labels:
+    app: time-mcp
+    component: security
+spec:
+  podSelector:
+    matchLabels:
+      app: time-mcp
+  policyTypes:
+    - Ingress
+  ingress:
+    # Allow only the Gateway to communicate with the Time MCP server
+    - from:
+        - podSelector:
+            matchLabels:
+              app: gateway
+      ports:
+        - protocol: TCP
+          port: {{ .Values.timeMcp.port }}
+{{- end }}

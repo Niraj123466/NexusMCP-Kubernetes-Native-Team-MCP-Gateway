@@ -1,0 +1,25 @@
+{{- if and .Values.networkPolicies.enabled .Values.fetchMcp.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: fetch-mcp-netpol
+  namespace: {{ .Values.namespace }}
+  labels:
+    app: fetch-mcp
+    component: security
+spec:
+  podSelector:
+    matchLabels:
+      app: fetch-mcp
+  policyTypes:
+    - Ingress
+  ingress:
+    # Allow only the Gateway to communicate with the Fetch MCP server
+    - from:
+        - podSelector:
+            matchLabels:
+              app: gateway
+      ports:
+        - protocol: TCP
+          port: {{ .Values.fetchMcp.port }}
+{{- end }}

@@ -1,0 +1,48 @@
+{{- if .Values.fetchMcp.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: fetch-mcp
+  namespace: {{ .Values.namespace }}
+  labels:
+    app: fetch-mcp
+    component: mcp-upstream
+spec:
+  replicas: {{ .Values.fetchMcp.replicas }}
+  selector:
+    matchLabels:
+      app: fetch-mcp
+  template:
+    metadata:
+      labels:
+        app: fetch-mcp
+        component: mcp-upstream
+    spec:
+      containers:
+        - name: fetch-mcp
+          image: {{ .Values.fetchMcp.image }}
+          imagePullPolicy: {{ .Values.global.imagePullPolicy }}
+          ports:
+            - containerPort: {{ .Values.fetchMcp.port }}
+              name: mcp
+          env:
+            - name: PORT
+              value: {{ .Values.fetchMcp.port | quote }}
+            - name: HOST
+              value: "0.0.0.0"
+            - name: FETCH_ALLOWED_DOMAINS
+              value: {{ .Values.fetchMcp.allowedDomains | default "" | quote }}
+          resources:
+            {{- toYaml .Values.fetchMcp.resources | nindent 12 }}
+          readinessProbe:
+            tcpSocket:
+              port: {{ .Values.fetchMcp.port }}
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            failureThreshold: 5
+          livenessProbe:
+            tcpSocket:
+              port: {{ .Values.fetchMcp.port }}
+            initialDelaySeconds: 15
+            periodSeconds: 15
+{{- end }}

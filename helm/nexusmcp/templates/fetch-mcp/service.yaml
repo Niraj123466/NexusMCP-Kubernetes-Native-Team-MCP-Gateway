@@ -1,0 +1,18 @@
+{{- if .Values.fetchMcp.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: fetch-mcp-svc
+  namespace: {{ .Values.namespace }}
+  labels:
+    app: fetch-mcp
+    component: mcp-upstream
+spec:
+  type: ClusterIP
+  ports:
+    - port: {{ .Values.fetchMcp.port }}
+      targetPort: {{ .Values.fetchMcp.port }}
+      name: mcp
+  selector:
+    app: fetch-mcp
+{{- end }}

@@ -1,0 +1,18 @@
+{{- if .Values.timeMcp.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: time-mcp-svc
+  namespace: {{ .Values.namespace }}
+  labels:
+    app: time-mcp
+    component: mcp-upstream
+spec:
+  type: ClusterIP
+  ports:
+    - port: {{ .Values.timeMcp.port }}
+      targetPort: {{ .Values.timeMcp.port }}
+      name: mcp
+  selector:
+    app: time-mcp
+{{- end }}
