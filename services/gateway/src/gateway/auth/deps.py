@@ -3,8 +3,7 @@ from __future__ import annotations
 
 from datetime import timezone
 
-from fastapi import Depends, HTTPException, Security, status
-from fastapi.security import APIKeyHeader
+from fastapi import Depends, Header, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -12,8 +11,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from gateway.auth.api_keys import utcnow, verify_api_key
 from gateway.db.models import ApiKey, User, UserRole
 from gateway.db.session import get_db
-
-_api_key_header = APIKeyHeader(name="X-API-Key", auto_error=True)
 
 _UNAUTHORIZED = HTTPException(
     status_code=status.HTTP_401_UNAUTHORIZED,
@@ -27,11 +24,12 @@ _FORBIDDEN = HTTPException(
 
 
 async def get_current_user(
-    raw_key: str = Security(_api_key_header),
+    x_api_key: str | None = Header(None, alias="X-API-Key"),
+    authorization: str | None = Header(None, alias="Authorization"),
     db: AsyncSession = Depends(get_db),
 ) -> User:
     """
-    Validate X-API-Key header and return the authenticated User.
+    Validate X-API-Key or Authorization Bearer header and return the authenticated User.
 
     Steps:
     1. Extract the key prefix (first 8 chars) to narrow the DB lookup.
@@ -42,6 +40,13 @@ async def get_current_user(
 
     Identity is ALWAYS resolved from the DB — never from client-supplied claims.
     """
+    raw_key = x_api_key
+    if not raw_key and authorization:
+        if authorization.lower().startswith("bearer "):
+            raw_key = authorization[7:].strip()
+        else:
+            raw_key = authorization.strip()
+
     if not raw_key or len(raw_key) < 8:
         raise _UNAUTHORIZED
 

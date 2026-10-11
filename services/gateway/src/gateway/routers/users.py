@@ -83,6 +83,14 @@ async def list_users(
     return list(result.scalars().all())
 
 
+@router.get("/me", response_model=UserResponse)
+async def get_current_user_profile(
+    current_user: User = Depends(get_current_user),
+) -> User:
+    """Return the currently authenticated user's profile."""
+    return current_user
+
+
 @router.get("/{user_id}", response_model=UserResponse)
 async def get_user(
     user_id: uuid.UUID,
