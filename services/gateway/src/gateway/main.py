@@ -182,7 +182,7 @@ app.add_middleware(
 )
 
 # ── Routers ───────────────────────────────────────────────────
-from gateway.routers import audit, keys, tools, upstreams, users
+from gateway.routers import audit, chat, keys, tools, upstreams, users
 from gateway.mcp import proxy
 
 app.include_router(users.router)
@@ -190,6 +190,7 @@ app.include_router(keys.router)
 app.include_router(upstreams.router)
 app.include_router(audit.router)
 app.include_router(tools.router)
+app.include_router(chat.router)
 app.include_router(proxy.router)
 
 
