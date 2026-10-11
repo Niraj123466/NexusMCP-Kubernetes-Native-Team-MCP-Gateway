@@ -20,9 +20,9 @@ htmlcov/
 .coverage
 
 # Node / frontend
-frontend/node_modules/
-frontend/dist/
-frontend/.vite/
+**/node_modules/
+**/dist/
+**/.vite/
 
 # Helm
 *.tgz
