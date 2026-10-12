@@ -13,6 +13,11 @@ import {
   AlertCircle,
   Loader2,
   Cpu,
+  Copy,
+  Check,
+  ShoppingBag,
+  Globe,
+  SlidersHorizontal,
 } from "lucide-react";
 import { api } from "../services/api";
 
@@ -37,13 +42,15 @@ export const ChatPage: React.FC = () => {
       id: "welcome",
       role: "assistant",
       content:
-        "Hello! I am your **NexusMCP AI Agent**. I can help you manage your WooCommerce store, query local timezones, and fetch safe external web resources using aggregated MCP tools. How can I assist you today?",
-      timestamp: new Date().toLocaleTimeString(),
+        "Welcome to **NexusMCP Operations**. I coordinate actions across your WooCommerce store, system timezones, and safe web endpoints through unified MCP Streamable HTTP tools.\n\nAsk questions about inventory, manage products, or request external lookups below.",
+      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
     },
   ]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [expandedTools, setExpandedTools] = useState<Record<string, boolean>>({});
+  const [toolTabs, setToolTabs] = useState<Record<string, "result" | "args">>({});
+  const [copiedKeys, setCopiedKeys] = useState<Record<string, boolean>>({});
   const [systemPrompt, setSystemPrompt] = useState("");
   const [showSystemPrompt, setShowSystemPrompt] = useState(false);
   const [selectedProvider, setSelectedProvider] = useState<"gemini" | "ollama">("gemini");
@@ -62,11 +69,39 @@ export const ChatPage: React.FC = () => {
     setExpandedTools((prev) => ({ ...prev, [key]: !prev[key] }));
   };
 
+  const copyToClipboard = (key: string, content: string) => {
+    navigator.clipboard.writeText(content);
+    setCopiedKeys((prev) => ({ ...prev, [key]: true }));
+    setTimeout(() => {
+      setCopiedKeys((prev) => ({ ...prev, [key]: false }));
+    }, 2000);
+  };
+
   const samplePrompts = [
-    "List all products in my WooCommerce store with their price and stock.",
-    "What is the current time in Tokyo, New York, and London?",
-    "Fetch and summarize the page content of https://news.ycombinator.com",
-    "Create a new WooCommerce product: 'Cyberpunk Neon Hoodie' for $89.99 with 25 stock.",
+    {
+      title: "Query WooCommerce Products",
+      desc: "List products with pricing & stock status",
+      icon: <ShoppingBag className="w-3.5 h-3.5 text-emerald-400" />,
+      prompt: "List all products in my WooCommerce store with their current price, stock count, and ID.",
+    },
+    {
+      title: "Global Timezone Comparison",
+      desc: "Current time in Tokyo, New York & London",
+      icon: <Clock className="w-3.5 h-3.5 text-cyan-400" />,
+      prompt: "What is the current time in Tokyo, London, and New York using the time MCP tool?",
+    },
+    {
+      title: "Create Catalog Product",
+      desc: "Publish new simple product in WooCommerce",
+      icon: <Sparkles className="w-3.5 h-3.5 text-amber-400" />,
+      prompt: "Create a new WooCommerce product: 'Nexus Cloud Shell Jacket' for $129.99 with 30 units of stock.",
+    },
+    {
+      title: "SSRF-Safe Web Fetch",
+      desc: "Safely read and summarize remote URL",
+      icon: <Globe className="w-3.5 h-3.5 text-violet-400" />,
+      prompt: "Fetch the page content from https://news.ycombinator.com and summarize the top headline.",
+    },
   ];
 
   const handleSend = async (textToSend?: string) => {
@@ -77,7 +112,7 @@ export const ChatPage: React.FC = () => {
       id: `user-${Date.now()}`,
       role: "user",
       content: text.trim(),
-      timestamp: new Date().toLocaleTimeString(),
+      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
     };
 
     setMessages((prev) => [...prev, userMsg]);
@@ -87,7 +122,6 @@ export const ChatPage: React.FC = () => {
     const startTime = Date.now();
 
     try {
-      // Build history for backend
       const history = messages
         .filter((m) => m.id !== "welcome")
         .map((m) => ({
@@ -97,7 +131,6 @@ export const ChatPage: React.FC = () => {
       history.push({ role: "user", content: text.trim() });
 
       const res = await api.chat(history, systemPrompt || undefined);
-
       const durationMs = Date.now() - startTime;
 
       const assistantMsg: Message = {
@@ -112,7 +145,7 @@ export const ChatPage: React.FC = () => {
         })),
         iterations: res.iterations,
         durationMs,
-        timestamp: new Date().toLocaleTimeString(),
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       };
 
       setMessages((prev) => [...prev, assistantMsg]);
@@ -121,7 +154,7 @@ export const ChatPage: React.FC = () => {
         id: `err-${Date.now()}`,
         role: "assistant",
         content: `**Error:** ${err.message || "Failed to communicate with AI chat agent."}`,
-        timestamp: new Date().toLocaleTimeString(),
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       };
       setMessages((prev) => [...prev, errorMsg]);
     } finally {
@@ -135,168 +168,219 @@ export const ChatPage: React.FC = () => {
         id: "welcome",
         role: "assistant",
         content:
-          "Conversation reset. How can I help you manage your store and tools today?",
-        timestamp: new Date().toLocaleTimeString(),
+          "Conversation reset. How can I help you coordinate MCP operations today?",
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       },
     ]);
   };
 
   return (
-    <div className="max-w-6xl mx-auto px-4 py-6 flex flex-col h-[calc(100vh-5rem)]">
-      {/* Header bar */}
-      <div className="flex items-center justify-between pb-4 border-b border-slate-800">
-        <div className="flex items-center space-x-3">
-          <div className="w-10 h-10 rounded-xl bg-brand-500/10 border border-brand-500/20 flex items-center justify-center text-brand-500">
-            <Bot className="w-5 h-5" />
-          </div>
-          <div>
-            <h1 className="text-lg font-bold text-white flex items-center space-x-2">
-              <span>Agentic Operations Assistant</span>
-              <span className="text-[11px] px-2 py-0.5 rounded-full font-medium bg-brand-500/15 text-brand-500 border border-brand-500/25">
-                v0.1
-              </span>
-            </h1>
-            <p className="text-xs text-slate-400">
-              Autonomous multi-turn agent with WooCommerce, Time, and SSRF-safe Fetch tools
-            </p>
+    <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6 flex flex-col h-[calc(100vh-4rem)]">
+      {/* Top Controls Ribbon */}
+      <div className="flex items-center justify-between pb-3.5 border-b border-canvas-border">
+        <div className="flex items-center space-x-2">
+          {/* Provider selector pill */}
+          <div className="inline-flex p-0.5 rounded-lg bg-canvas-card border border-canvas-border">
+            <button
+              onClick={() => setSelectedProvider("gemini")}
+              className={`flex items-center space-x-1.5 px-2.5 py-1 rounded-md text-xs font-medium transition ${
+                selectedProvider === "gemini"
+                  ? "bg-canvas-elevated text-emerald-400 font-semibold shadow-subtle"
+                  : "text-slate-400 hover:text-slate-200"
+              }`}
+            >
+              <Cpu className="w-3.5 h-3.5" />
+              <span>Gemini 2.0 Flash</span>
+            </button>
+            <button
+              onClick={() => setSelectedProvider("ollama")}
+              className={`flex items-center space-x-1.5 px-2.5 py-1 rounded-md text-xs font-medium transition ${
+                selectedProvider === "ollama"
+                  ? "bg-canvas-elevated text-emerald-400 font-semibold shadow-subtle"
+                  : "text-slate-400 hover:text-slate-200"
+              }`}
+            >
+              <Cpu className="w-3.5 h-3.5" />
+              <span>Ollama (Local)</span>
+            </button>
           </div>
         </div>
 
-        {/* Controls */}
         <div className="flex items-center space-x-2">
-          {/* Provider badge */}
-          <button
-            onClick={() => setSelectedProvider(selectedProvider === "gemini" ? "ollama" : "gemini")}
-            title="Toggle LLM Provider"
-            className="flex items-center space-x-1.5 px-2.5 py-1 rounded-lg bg-dark-800 hover:bg-dark-750 border border-slate-700/60 text-xs text-slate-300 transition"
-          >
-            <Cpu className="w-3.5 h-3.5 text-accent-cyan" />
-            <span className="font-mono text-[11px]">{selectedProvider === "gemini" ? "Google Gemini 2.0" : "Ollama (Local)"}</span>
-          </button>
-
           <button
             onClick={() => setShowSystemPrompt(!showSystemPrompt)}
-            className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition ${
+            className={`flex items-center space-x-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium border transition ${
               showSystemPrompt
-                ? "bg-slate-700/60 border-slate-600 text-white"
-                : "bg-dark-800 border-slate-800 text-slate-400 hover:text-slate-200"
+                ? "bg-canvas-elevated border-emerald-500/40 text-emerald-400"
+                : "bg-canvas-card border-canvas-border text-slate-400 hover:text-slate-200"
             }`}
           >
-            System Prompt
+            <SlidersHorizontal className="w-3.5 h-3.5" />
+            <span>Instructions</span>
           </button>
 
           <button
             onClick={handleReset}
             title="Reset conversation"
-            className="p-1.5 rounded-lg bg-dark-800 border border-slate-800 text-slate-400 hover:text-white hover:bg-slate-800 transition"
+            className="p-1.5 rounded-lg bg-canvas-card border border-canvas-border text-slate-400 hover:text-slate-200 hover:bg-canvas-elevated transition"
           >
-            <RotateCcw className="w-4 h-4" />
+            <RotateCcw className="w-3.5 h-3.5" />
           </button>
         </div>
       </div>
 
       {/* System prompt drawer */}
       {showSystemPrompt && (
-        <div className="p-3 my-2 rounded-xl bg-dark-850 border border-slate-800 animate-fade-in">
-          <label className="block text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-1">
-            Custom System Instructions
-          </label>
+        <div className="my-3 p-3.5 rounded-xl bg-canvas-card border border-canvas-border space-y-2 animate-subtle-fade">
+          <div className="flex items-center justify-between text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+            <span>Custom System Prompt</span>
+            <span className="text-slate-500 font-normal">Passed to agent loop</span>
+          </div>
           <textarea
             value={systemPrompt}
             onChange={(e) => setSystemPrompt(e.target.value)}
-            placeholder="You are an expert WooCommerce administrator. Always verify product stock before making adjustments..."
+            placeholder="You are an expert WooCommerce administrator. Always verify stock and confirm order status before modifying..."
             rows={2}
-            className="w-full bg-dark-900 border border-slate-700 rounded-lg p-2.5 text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:border-brand-500"
+            className="w-full bg-canvas-subtle border border-canvas-border rounded-lg p-2.5 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-emerald-500/50"
           />
         </div>
       )}
 
-      {/* Message area */}
-      <div className="flex-1 overflow-y-auto py-4 space-y-4 pr-1">
+      {/* Messages Canvas */}
+      <div className="flex-1 overflow-y-auto py-5 space-y-5 pr-1">
         {messages.map((m) => {
           const isUser = m.role === "user";
           return (
             <div
               key={m.id}
-              className={`flex items-start space-x-3 ${isUser ? "flex-row-reverse space-x-reverse" : ""}`}
+              className={`flex items-start space-x-3.5 ${isUser ? "flex-row-reverse space-x-reverse" : ""}`}
             >
               {/* Avatar */}
               <div
-                className={`w-8 h-8 rounded-xl shrink-0 flex items-center justify-center shadow-md ${
+                className={`w-7 h-7 rounded-lg shrink-0 flex items-center justify-center font-bold text-xs ${
                   isUser
-                    ? "bg-gradient-to-tr from-brand-600 to-accent-violet text-white"
-                    : "bg-dark-800 border border-slate-700 text-brand-500"
+                    ? "bg-slate-700 text-white"
+                    : "bg-emerald-500/10 border border-emerald-500/25 text-emerald-400"
                 }`}
               >
-                {isUser ? <UserIcon className="w-4 h-4" /> : <Bot className="w-4 h-4" />}
+                {isUser ? <UserIcon className="w-3.5 h-3.5" /> : <Bot className="w-4 h-4" />}
               </div>
 
-              {/* Message bubble */}
+              {/* Message Card */}
               <div
-                className={`max-w-2xl rounded-2xl px-4 py-3 text-sm leading-relaxed ${
+                className={`max-w-2xl rounded-xl p-4 text-xs sm:text-sm leading-relaxed ${
                   isUser
-                    ? "bg-brand-600 text-white rounded-tr-none shadow-md"
-                    : "bg-dark-850 border border-slate-800 text-slate-200 rounded-tl-none shadow-lg"
+                    ? "bg-canvas-elevated border border-canvas-border text-slate-100 rounded-tr-none shadow-sm"
+                    : "bg-canvas-card border border-canvas-border text-slate-200 rounded-tl-none shadow-subtle"
                 }`}
               >
-                {/* Content */}
-                <div className="whitespace-pre-wrap">{m.content}</div>
+                <div className="whitespace-pre-wrap font-sans">{m.content}</div>
 
-                {/* Tool executions cards */}
+                {/* Collapsible Tool Call Execution Cards */}
                 {m.toolExecutions && m.toolExecutions.length > 0 && (
-                  <div className="mt-3 pt-3 border-t border-slate-800/80 space-y-2">
-                    <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 flex items-center space-x-1.5">
-                      <Terminal className="w-3.5 h-3.5 text-brand-500" />
-                      <span>Executed MCP Tools ({m.toolExecutions.length})</span>
+                  <div className="mt-3.5 pt-3.5 border-t border-canvas-border space-y-2.5">
+                    <div className="flex items-center justify-between text-[11px] font-mono text-slate-400">
+                      <span className="flex items-center space-x-1.5 font-semibold text-slate-300">
+                        <Terminal className="w-3.5 h-3.5 text-emerald-400" />
+                        <span>MCP Tool Calls ({m.toolExecutions.length})</span>
+                      </span>
                     </div>
 
                     {m.toolExecutions.map((t, idx) => {
                       const toolKey = `${m.id}-tool-${idx}`;
                       const isExpanded = !!expandedTools[toolKey];
+                      const activeTab = toolTabs[toolKey] || "result";
+                      const isCopied = !!copiedKeys[toolKey];
+
+                      const rawPayload = activeTab === "result" ? t.result : t.arguments;
+                      const stringifiedPayload =
+                        typeof rawPayload === "string"
+                          ? rawPayload
+                          : JSON.stringify(rawPayload, null, 2);
+
                       return (
                         <div
                           key={toolKey}
-                          className="rounded-xl border border-slate-700/60 bg-dark-900 overflow-hidden text-xs"
+                          className="rounded-lg border border-canvas-border bg-canvas-subtle overflow-hidden"
                         >
-                          <button
-                            type="button"
-                            onClick={() => toggleToolExpand(toolKey)}
-                            className="w-full flex items-center justify-between p-2.5 bg-dark-800/60 hover:bg-dark-800 transition text-left"
-                          >
+                          {/* Tool Header Banner */}
+                          <div className="flex items-center justify-between p-2.5 bg-canvas-card/60">
                             <div className="flex items-center space-x-2">
                               {t.status === "success" ? (
-                                <CheckCircle2 className="w-3.5 h-3.5 text-accent-emerald" />
+                                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
                               ) : (
-                                <AlertCircle className="w-3.5 h-3.5 text-accent-rose" />
+                                <AlertCircle className="w-3.5 h-3.5 text-rose-400" />
                               )}
-                              <span className="font-mono font-semibold text-slate-200">{t.tool}</span>
+                              <span className="font-mono text-xs font-semibold text-slate-200">
+                                {t.tool}
+                              </span>
                             </div>
-                            <div className="flex items-center space-x-1 text-slate-400 text-[10px]">
-                              <span>Details</span>
-                              {isExpanded ? (
-                                <ChevronDown className="w-3.5 h-3.5" />
-                              ) : (
-                                <ChevronRight className="w-3.5 h-3.5" />
-                              )}
-                            </div>
-                          </button>
 
+                            <div className="flex items-center space-x-2">
+                              <span
+                                className={`text-[9px] font-mono uppercase px-1.5 py-0.5 rounded font-semibold ${
+                                  t.status === "success"
+                                    ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
+                                    : "bg-rose-500/10 text-rose-400 border border-rose-500/20"
+                                }`}
+                              >
+                                {t.status}
+                              </span>
+
+                              <button
+                                type="button"
+                                onClick={() => toggleToolExpand(toolKey)}
+                                className="flex items-center space-x-1 text-slate-400 hover:text-slate-200 text-[10px] px-1.5 py-0.5 rounded hover:bg-canvas-elevated transition"
+                              >
+                                <span>{isExpanded ? "Collapse" : "Inspect"}</span>
+                                {isExpanded ? (
+                                  <ChevronDown className="w-3 h-3" />
+                                ) : (
+                                  <ChevronRight className="w-3 h-3" />
+                                )}
+                              </button>
+                            </div>
+                          </div>
+
+                          {/* Expanded Content with Tabs & Copy */}
                           {isExpanded && (
-                            <div className="p-3 border-t border-slate-800 space-y-2 font-mono text-[11px]">
-                              <div>
-                                <span className="text-slate-400 font-semibold uppercase text-[10px]">Arguments:</span>
-                                <pre className="mt-1 p-2 rounded-lg bg-dark-950/70 border border-slate-800 text-slate-300 overflow-x-auto">
-                                  {JSON.stringify(t.arguments, null, 2)}
-                                </pre>
+                            <div className="p-3 border-t border-canvas-border space-y-2">
+                              <div className="flex items-center justify-between">
+                                <div className="inline-flex p-0.5 rounded-md bg-canvas-card border border-canvas-border text-[10px]">
+                                  <button
+                                    onClick={() => setToolTabs((p) => ({ ...p, [toolKey]: "result" }))}
+                                    className={`px-2 py-0.5 rounded font-medium transition ${
+                                      activeTab === "result"
+                                        ? "bg-canvas-elevated text-emerald-400 font-semibold"
+                                        : "text-slate-400 hover:text-slate-200"
+                                    }`}
+                                  >
+                                    Result
+                                  </button>
+                                  <button
+                                    onClick={() => setToolTabs((p) => ({ ...p, [toolKey]: "args" }))}
+                                    className={`px-2 py-0.5 rounded font-medium transition ${
+                                      activeTab === "args"
+                                        ? "bg-canvas-elevated text-emerald-400 font-semibold"
+                                        : "text-slate-400 hover:text-slate-200"
+                                    }`}
+                                  >
+                                    Arguments
+                                  </button>
+                                </div>
+
+                                <button
+                                  onClick={() => copyToClipboard(toolKey, stringifiedPayload)}
+                                  className="flex items-center space-x-1 text-[10px] text-slate-400 hover:text-emerald-400 transition"
+                                >
+                                  {isCopied ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
+                                  <span>{isCopied ? "Copied" : "Copy JSON"}</span>
+                                </button>
                               </div>
-                              <div>
-                                <span className="text-slate-400 font-semibold uppercase text-[10px]">Result:</span>
-                                <pre className="mt-1 p-2 rounded-lg bg-dark-950/70 border border-slate-800 text-slate-300 overflow-x-auto max-h-48 overflow-y-auto">
-                                  {typeof t.result === "string"
-                                    ? t.result
-                                    : JSON.stringify(t.result, null, 2)}
-                                </pre>
-                              </div>
+
+                              <pre className="p-2.5 rounded-md bg-canvas-card border border-canvas-border text-slate-300 font-mono text-[11px] overflow-x-auto max-h-52 overflow-y-auto leading-relaxed">
+                                {stringifiedPayload}
+                              </pre>
                             </div>
                           )}
                         </div>
@@ -305,9 +389,9 @@ export const ChatPage: React.FC = () => {
                   </div>
                 )}
 
-                {/* Footer metrics */}
+                {/* Turn metrics footer */}
                 {(m.durationMs || m.iterations) && (
-                  <div className="mt-2 pt-2 border-t border-slate-800/40 flex items-center space-x-3 text-[10px] text-slate-400">
+                  <div className="mt-2.5 pt-2 border-t border-canvas-border/50 flex items-center space-x-3 text-[10px] font-mono text-slate-400">
                     {m.durationMs && (
                       <span className="flex items-center space-x-1">
                         <Clock className="w-3 h-3 text-slate-500" />
@@ -317,6 +401,8 @@ export const ChatPage: React.FC = () => {
                     {m.iterations && (
                       <span>{m.iterations} turn{m.iterations > 1 ? "s" : ""}</span>
                     )}
+                    <span className="text-slate-600">•</span>
+                    <span>{m.timestamp}</span>
                   </div>
                 )}
               </div>
@@ -325,13 +411,13 @@ export const ChatPage: React.FC = () => {
         })}
 
         {isLoading && (
-          <div className="flex items-start space-x-3">
-            <div className="w-8 h-8 rounded-xl bg-dark-800 border border-slate-700 text-brand-500 flex items-center justify-center shadow-md">
+          <div className="flex items-start space-x-3.5">
+            <div className="w-7 h-7 rounded-lg bg-emerald-500/10 border border-emerald-500/25 text-emerald-400 flex items-center justify-center shrink-0">
               <Bot className="w-4 h-4 animate-pulse" />
             </div>
-            <div className="bg-dark-850 border border-slate-800 rounded-2xl rounded-tl-none px-4 py-3 flex items-center space-x-2 text-xs text-slate-400 shadow-md">
-              <Loader2 className="w-4 h-4 animate-spin text-brand-500" />
-              <span>Agent is thinking and coordinating MCP tools...</span>
+            <div className="bg-canvas-card border border-canvas-border rounded-xl rounded-tl-none p-3.5 flex items-center space-x-2.5 text-xs text-slate-400 shadow-subtle">
+              <Loader2 className="w-4 h-4 animate-spin text-emerald-400" />
+              <span>Coordinating with upstream MCP tools...</span>
             </div>
           </div>
         )}
@@ -339,28 +425,34 @@ export const ChatPage: React.FC = () => {
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Suggested prompts if empty or early */}
+      {/* Suggested Prompt Cards */}
       {messages.length <= 2 && (
-        <div className="py-2">
-          <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 mb-2 flex items-center space-x-1">
-            <Sparkles className="w-3 h-3 text-brand-500" />
-            <span>Suggested prompts</span>
-          </p>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+        <div className="py-2 space-y-2">
+          <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 flex items-center space-x-1.5">
+            <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
+            <span>Suggested Operations</span>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
             {samplePrompts.map((p, i) => (
               <button
                 key={i}
-                onClick={() => handleSend(p)}
-                className="text-left p-2.5 rounded-xl bg-dark-850 hover:bg-dark-800 border border-slate-800 hover:border-slate-700 text-xs text-slate-300 transition line-clamp-1"
+                onClick={() => handleSend(p.prompt)}
+                className="text-left p-3 rounded-xl bg-canvas-card hover:bg-canvas-elevated border border-canvas-border hover:border-canvas-border-focus transition-all group"
               >
-                &ldquo;{p}&rdquo;
+                <div className="flex items-center space-x-2 mb-1">
+                  {p.icon}
+                  <span className="text-xs font-semibold text-slate-200 group-hover:text-emerald-400 transition">
+                    {p.title}
+                  </span>
+                </div>
+                <p className="text-[11px] text-slate-400 line-clamp-1">{p.desc}</p>
               </button>
             ))}
           </div>
         </div>
       )}
 
-      {/* Chat input form */}
+      {/* Composer Input */}
       <form
         onSubmit={(e) => {
           e.preventDefault();
@@ -374,13 +466,13 @@ export const ChatPage: React.FC = () => {
             value={input}
             onChange={(e) => setInput(e.target.value)}
             disabled={isLoading}
-            placeholder="Ask anything or instruct the agent to run WooCommerce operations..."
-            className="w-full bg-dark-850 border border-slate-700/80 rounded-2xl pl-4 pr-12 py-3.5 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 transition shadow-inner"
+            placeholder="Ask agent or instruct operations (e.g. 'List all products in stock', 'What time is it in Tokyo?')..."
+            className="w-full bg-canvas-card border border-canvas-border rounded-xl pl-4 pr-12 py-3.5 text-xs sm:text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-emerald-500/60 focus:ring-1 focus:ring-emerald-500/30 transition"
           />
           <button
             type="submit"
             disabled={!input.trim() || isLoading}
-            className="absolute right-2.5 p-2 rounded-xl bg-brand-600 hover:bg-brand-500 text-white transition disabled:opacity-40 disabled:hover:bg-brand-600 shadow-md shadow-brand-500/25"
+            className="absolute right-2.5 p-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white transition disabled:opacity-40 shadow-sm"
           >
             <Send className="w-4 h-4" />
           </button>

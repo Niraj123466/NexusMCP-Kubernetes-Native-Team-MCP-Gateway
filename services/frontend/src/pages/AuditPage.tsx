@@ -6,6 +6,9 @@ import {
   AlertCircle,
   Terminal,
   Search,
+  Copy,
+  Check,
+  X,
 } from "lucide-react";
 import { api } from "../services/api";
 
@@ -28,6 +31,7 @@ export const AuditPage: React.FC = () => {
   const [outcomeFilter, setOutcomeFilter] = useState<string>("");
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedLog, setSelectedLog] = useState<AuditItem | null>(null);
+  const [copiedHash, setCopiedHash] = useState(false);
 
   const fetchLogs = async () => {
     setIsLoading(true);
@@ -59,113 +63,119 @@ export const AuditPage: React.FC = () => {
     );
   });
 
+  const copyHash = (hash: string) => {
+    navigator.clipboard.writeText(hash);
+    setCopiedHash(true);
+    setTimeout(() => setCopiedHash(false), 2000);
+  };
+
   return (
-    <div className="max-w-7xl mx-auto px-4 py-8 space-y-6">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 space-y-5">
       {/* Top Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-white flex items-center space-x-2">
-            <ShieldCheck className="w-6 h-6 text-brand-500" />
-            <span>Audit & Compliance Logs</span>
+          <h1 className="text-xl font-bold tracking-tight text-white flex items-center space-x-2">
+            <ShieldCheck className="w-5 h-5 text-emerald-400" />
+            <span>Audit & Compliance Ledger</span>
           </h1>
-          <p className="text-xs text-slate-400 mt-1">
-            Immutable cryptographic records of all tool calls, HMAC argument hashes, and execution metrics.
+          <p className="text-xs text-slate-400 mt-0.5">
+            Immutable cryptographic records of all tool calls, HMAC argument hashes, and latencies.
           </p>
         </div>
 
         <button
           onClick={fetchLogs}
           disabled={isLoading}
-          className="flex items-center space-x-1.5 px-3 py-2 rounded-xl bg-dark-800 hover:bg-dark-750 border border-slate-700/80 text-xs text-slate-300 font-medium transition self-start sm:self-auto"
+          className="flex items-center space-x-1.5 px-3 py-1.5 rounded-lg bg-canvas-card hover:bg-canvas-elevated border border-canvas-border text-xs text-slate-300 font-medium transition self-start sm:self-auto"
         >
           <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? "animate-spin" : ""}`} />
-          <span>Refresh Logs</span>
+          <span>Refresh</span>
         </button>
       </div>
 
       {error && (
-        <div className="p-4 rounded-xl bg-accent-rose/10 border border-accent-rose/20 text-accent-rose text-xs flex items-center space-x-2">
+        <div className="p-3.5 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs flex items-center space-x-2">
           <AlertCircle className="w-4 h-4 shrink-0" />
           <span>{error}</span>
         </div>
       )}
 
       {/* Filter and Search Bar */}
-      <div className="flex flex-col sm:flex-row gap-3">
+      <div className="flex flex-col sm:flex-row gap-2.5">
         <div className="relative flex-1">
-          <Search className="w-4 h-4 text-slate-500 absolute left-3.5 top-3" />
+          <Search className="w-4 h-4 text-slate-500 absolute left-3 top-2.5" />
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search logs by tool name, error, or args hash..."
-            className="w-full bg-dark-850 border border-slate-800 rounded-xl pl-10 pr-4 py-2.5 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-brand-500 transition"
+            placeholder="Search audit records by tool name, error text, or args hash..."
+            className="w-full bg-canvas-card border border-canvas-border rounded-lg pl-9 pr-3 py-2 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-emerald-500/50 transition"
           />
         </div>
 
-        <div className="flex items-center space-x-2">
+        <div className="flex items-center space-x-1.5">
           <button
             onClick={() => setOutcomeFilter("")}
-            className={`px-3 py-2 rounded-xl text-xs font-medium transition ${
+            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition ${
               outcomeFilter === ""
-                ? "bg-brand-600 text-white"
-                : "bg-dark-850 border border-slate-800 text-slate-400 hover:text-slate-200"
+                ? "bg-canvas-elevated text-emerald-400 border border-emerald-500/30 font-semibold"
+                : "bg-canvas-card border border-canvas-border text-slate-400 hover:text-slate-200"
             }`}
           >
-            All Outcomes ({logs.length})
+            All ({logs.length})
           </button>
           <button
             onClick={() => setOutcomeFilter("success")}
-            className={`px-3 py-2 rounded-xl text-xs font-medium transition ${
+            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition ${
               outcomeFilter === "success"
-                ? "bg-accent-emerald text-dark-900 font-semibold"
-                : "bg-dark-850 border border-slate-800 text-slate-400 hover:text-slate-200"
+                ? "bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 font-semibold"
+                : "bg-canvas-card border border-canvas-border text-slate-400 hover:text-slate-200"
             }`}
           >
             Success
           </button>
           <button
             onClick={() => setOutcomeFilter("error")}
-            className={`px-3 py-2 rounded-xl text-xs font-medium transition ${
+            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition ${
               outcomeFilter === "error"
-                ? "bg-accent-rose text-white"
-                : "bg-dark-850 border border-slate-800 text-slate-400 hover:text-slate-200"
+                ? "bg-rose-500/15 text-rose-400 border border-rose-500/30 font-semibold"
+                : "bg-canvas-card border border-canvas-border text-slate-400 hover:text-slate-200"
             }`}
           >
-            Error
+            Errors
           </button>
         </div>
       </div>
 
       {/* Logs Table */}
-      <div className="rounded-2xl border border-slate-800 bg-dark-850 overflow-hidden shadow-lg">
+      <div className="rounded-xl border border-canvas-border bg-canvas-card overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs">
-            <thead className="bg-dark-900/80 border-b border-slate-800 uppercase text-[10px] font-semibold tracking-wider text-slate-400">
+            <thead className="bg-canvas-subtle border-b border-canvas-border uppercase text-[10px] font-mono tracking-wider text-slate-400">
               <tr>
-                <th className="py-3 px-4">Status</th>
-                <th className="py-3 px-4">Timestamp</th>
-                <th className="py-3 px-4">Tool Name</th>
-                <th className="py-3 px-4">Duration</th>
-                <th className="py-3 px-4">Arg HMAC-SHA256</th>
-                <th className="py-3 px-4">User ID</th>
+                <th className="py-2.5 px-4">Status</th>
+                <th className="py-2.5 px-4">Timestamp</th>
+                <th className="py-2.5 px-4">Tool Name</th>
+                <th className="py-2.5 px-4">Duration</th>
+                <th className="py-2.5 px-4">HMAC-SHA256 Args Hash</th>
+                <th className="py-2.5 px-4">Actor ID</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-800/60 font-mono">
+            <tbody className="divide-y divide-canvas-border font-mono">
               {filteredLogs.map((log) => {
                 const isSuccess = log.outcome === "success";
                 return (
                   <tr
                     key={log.id}
                     onClick={() => setSelectedLog(log)}
-                    className="hover:bg-dark-800/60 transition cursor-pointer"
+                    className="hover:bg-canvas-elevated/60 transition cursor-pointer"
                   >
-                    <td className="py-3 px-4 whitespace-nowrap">
+                    <td className="py-2.5 px-4 whitespace-nowrap">
                       <span
                         className={`inline-flex items-center space-x-1.5 px-2 py-0.5 rounded-full text-[10px] font-sans font-semibold border ${
                           isSuccess
-                            ? "bg-accent-emerald/10 text-accent-emerald border-accent-emerald/20"
-                            : "bg-accent-rose/10 text-accent-rose border-accent-rose/20"
+                            ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
+                            : "bg-rose-500/10 text-rose-400 border-rose-500/20"
                         }`}
                       >
                         {isSuccess ? (
@@ -176,21 +186,21 @@ export const AuditPage: React.FC = () => {
                         <span>{log.outcome}</span>
                       </span>
                     </td>
-                    <td className="py-3 px-4 text-slate-400 whitespace-nowrap">
+                    <td className="py-2.5 px-4 text-slate-400 whitespace-nowrap text-[11px]">
                       {new Date(log.created_at).toLocaleString()}
                     </td>
-                    <td className="py-3 px-4 font-bold text-white whitespace-nowrap">
+                    <td className="py-2.5 px-4 font-bold text-white whitespace-nowrap">
                       {log.tool_name}
                     </td>
-                    <td className="py-3 px-4 text-slate-300 whitespace-nowrap">
+                    <td className="py-2.5 px-4 text-slate-300 whitespace-nowrap">
                       {log.duration_ms !== null && log.duration_ms !== undefined
                         ? `${log.duration_ms}ms`
                         : "—"}
                     </td>
-                    <td className="py-3 px-4 text-slate-500 text-[11px] whitespace-nowrap">
+                    <td className="py-2.5 px-4 text-slate-400 text-[11px] whitespace-nowrap">
                       {log.args_hash ? log.args_hash.substring(0, 16) + "..." : "—"}
                     </td>
-                    <td className="py-3 px-4 text-slate-500 text-[11px] whitespace-nowrap">
+                    <td className="py-2.5 px-4 text-slate-500 text-[11px] whitespace-nowrap">
                       {log.user_id ? log.user_id.substring(0, 8) + "..." : "—"}
                     </td>
                   </tr>
@@ -199,7 +209,7 @@ export const AuditPage: React.FC = () => {
 
               {filteredLogs.length === 0 && !isLoading && (
                 <tr>
-                  <td colSpan={6} className="py-8 text-center text-slate-500 font-sans">
+                  <td colSpan={6} className="py-10 text-center text-slate-500 font-sans">
                     No audit records match the current filter.
                   </td>
                 </tr>
@@ -209,47 +219,64 @@ export const AuditPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Detail Modal */}
+      {/* Detail Drawer Modal */}
       {selectedLog && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
-          <div className="w-full max-w-lg bg-dark-850 border border-slate-800 rounded-2xl p-6 shadow-2xl space-y-4">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-fade-in">
+          <div className="w-full max-w-lg bg-canvas-subtle border border-canvas-border rounded-2xl p-6 shadow-2xl space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-canvas-border">
               <div className="flex items-center space-x-2">
-                <Terminal className="w-5 h-5 text-brand-500" />
-                <h3 className="text-base font-bold text-white font-mono">{selectedLog.tool_name}</h3>
+                <Terminal className="w-4 h-4 text-emerald-400" />
+                <h3 className="text-sm font-bold text-white font-mono">{selectedLog.tool_name}</h3>
               </div>
               <button
                 onClick={() => setSelectedLog(null)}
-                className="text-slate-400 hover:text-white text-xs px-2 py-1 rounded-lg bg-dark-900 border border-slate-800"
+                className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-canvas-card transition"
               >
-                Close
+                <X className="w-4 h-4" />
               </button>
             </div>
 
             <div className="space-y-3 text-xs">
-              <div>
-                <span className="text-slate-500 uppercase text-[10px] font-semibold">Outcome:</span>
-                <div className="font-semibold text-slate-200 mt-0.5">{selectedLog.outcome}</div>
+              <div className="flex items-center justify-between">
+                <div>
+                  <span className="text-slate-500 uppercase text-[10px] font-semibold">Outcome:</span>
+                  <div className="font-semibold text-slate-200 mt-0.5">{selectedLog.outcome}</div>
+                </div>
+                <div>
+                  <span className="text-slate-500 uppercase text-[10px] font-semibold">Duration:</span>
+                  <div className="text-slate-300 font-mono mt-0.5">{selectedLog.duration_ms}ms</div>
+                </div>
               </div>
 
               <div>
                 <span className="text-slate-500 uppercase text-[10px] font-semibold">Timestamp:</span>
-                <div className="text-slate-300 font-mono mt-0.5">
+                <div className="text-slate-300 font-mono text-[11px] mt-0.5">
                   {new Date(selectedLog.created_at).toISOString()}
                 </div>
               </div>
 
               <div>
-                <span className="text-slate-500 uppercase text-[10px] font-semibold">Full Args Hash:</span>
-                <div className="text-slate-300 font-mono text-[11px] mt-0.5 p-2 rounded bg-dark-900 border border-slate-800 break-all select-all">
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-slate-500 uppercase text-[10px] font-semibold">
+                    Cryptographic HMAC-SHA256 Args Hash:
+                  </span>
+                  <button
+                    onClick={() => copyHash(selectedLog.args_hash)}
+                    className="flex items-center space-x-1 text-[10px] text-slate-400 hover:text-emerald-400 transition"
+                  >
+                    {copiedHash ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
+                    <span>{copiedHash ? "Copied" : "Copy"}</span>
+                  </button>
+                </div>
+                <div className="text-slate-300 font-mono text-[11px] p-2.5 rounded-lg bg-canvas-card border border-canvas-border break-all select-all">
                   {selectedLog.args_hash}
                 </div>
               </div>
 
               {selectedLog.error_message && (
                 <div>
-                  <span className="text-accent-rose uppercase text-[10px] font-semibold">Error Message:</span>
-                  <div className="text-accent-rose font-mono text-[11px] mt-0.5 p-2 rounded bg-accent-rose/10 border border-accent-rose/20 break-all">
+                  <span className="text-rose-400 uppercase text-[10px] font-semibold">Error Trace:</span>
+                  <div className="text-rose-400 font-mono text-[11px] mt-1 p-2.5 rounded-lg bg-rose-500/10 border border-rose-500/20 break-all">
                     {selectedLog.error_message}
                   </div>
                 </div>
