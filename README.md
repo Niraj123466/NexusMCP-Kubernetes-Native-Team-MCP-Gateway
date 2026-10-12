@@ -5,6 +5,15 @@ Host WooCommerce with automated database persistence, aggregate internal and ext
 
 ---
 
+## 🌐 Live Deployments & Demo
+
+- **Live Cloud Dashboard:** [https://nexusmcp.nirajmore.in](https://nexusmcp.nirajmore.in) (Alias: [https://nexusmcp-gateway.vercel.app](https://nexusmcp-gateway.vercel.app))
+- **Demo Video (Repository):** [`brag-output/brag.mp4`](file:///Users/nirajvaijinathmore/Desktop/dev/NexusMCP/brag-output/brag.mp4) (Poster: [`brag-output/brag.jpg`](file:///Users/nirajvaijinathmore/Desktop/dev/NexusMCP/brag-output/brag.jpg))
+- **Architecture & System Design:** [`docs/system-design-and-tradeoffs.md`](docs/system-design-and-tradeoffs.md)
+- **Threat Model & Security Posture:** [`docs/threat-model.md`](docs/threat-model.md)
+
+---
+
 ## Architecture Overview
 
 ```
@@ -196,6 +205,58 @@ External IDEs and AI tools (such as Cursor, Windsurf, or Claude Desktop) connect
   }
 }
 ```
+
+---
+
+## 🛒 Placing an Order via MCP
+
+External AI clients and scripts can manage products and inspect orders directly through the Gateway:
+
+```bash
+# 1. Query available products in WooCommerce
+curl -s -X POST http://api.nexusmcp.local:9080/api/tools/execute \
+  -H "X-API-Key: $NEXUS_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"name": "woocommerce__list_products", "arguments": {"per_page": 5}}' | jq .
+
+# 2. Query orders by customer status
+curl -s -X POST http://api.nexusmcp.local:9080/api/tools/execute \
+  -H "X-API-Key: $NEXUS_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"name": "woocommerce__list_orders", "arguments": {"status": "processing"}}' | jq .
+```
+
+---
+
+## 🤖 Using the Multi-Turn AI Chat Agent
+
+The autonomous agent coordinate complex workflows across microservices in a single turn:
+
+```bash
+# Chat request through the Gateway API
+curl -s -X POST http://api.nexusmcp.local:9080/api/chat \
+  -H "X-API-Key: $NEXUS_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "messages": [
+      {"role": "user", "content": "List the products in WooCommerce and check the current time in UTC."}
+    ]
+  }' | jq .
+```
+The agent autonomously invokes `woocommerce__list_products` followed by `time__get_current_time`, synthesizes the structured response, and logs cryptographic audit trails for every tool call.
+
+---
+
+## 🏆 Stand-Out & Bonus Items Implemented
+
+| Category | Implementation & Where to Find |
+|---|---|
+| **Production-like VPS & Cloud Deployment** | Vercel production deployment with custom domain routing at `https://nexusmcp.nirajmore.in` ([`services/frontend/vercel.json`](services/frontend/vercel.json)). Unified umbrella Helm chart with environment separation ([`helm/nexusmcp/values-production.yaml`](helm/nexusmcp/values-production.yaml)). |
+| **Tool Permissions & RBAC** | Strict role-based access control distinguishing `admin` vs `member` with server-side DB validation ([`services/gateway/src/gateway/auth/models.py`](services/gateway/src/gateway/auth/models.py), [`services/gateway/src/gateway/auth/dependencies.py`](services/gateway/src/gateway/auth/dependencies.py)). |
+| **Hosted Microservice MCP Servers** | Three in-cluster FastMCP microservices: WooCommerce Store ([`services/woocommerce-mcp`](services/woocommerce-mcp)), SSRF-guarded Web Fetcher ([`services/fetch-mcp`](services/fetch-mcp)), and Time utility ([`services/time-mcp`](services/time-mcp)). |
+| **Security Hardening** | In-cluster `NetworkPolicy` traffic isolation, AES-256 encrypted credential vault ([`services/gateway/src/gateway/mcp/crypto.py`](services/gateway/src/gateway/mcp/crypto.py)), strict private IP & metadata SSRF guard ([`services/gateway/src/gateway/mcp/ssrf_guard.py`](services/gateway/src/gateway/mcp/ssrf_guard.py)). |
+| **Observability & Cryptographic Audit** | PostgreSQL audit ledger with HMAC-SHA256 argument fingerprinting, execution duration tracking, and caller IP logging ([`services/gateway/src/gateway/mcp/aggregator.py`](services/gateway/src/gateway/mcp/aggregator.py)). |
+| **Upgrades and Rollback Strategy** | Deterministic Helm release templates with health readiness probes, rolling update strategies, and rollback runbooks ([`docs/deployment.md`](docs/deployment.md)). |
 
 ---
 
