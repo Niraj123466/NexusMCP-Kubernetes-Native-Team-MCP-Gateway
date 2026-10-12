@@ -69,7 +69,22 @@ kubectl create secret generic nexusmcp-secrets \
   --from-literal=OLLAMA_MODEL="${OLLAMA_MODEL:-llama3.1}" \
   --dry-run=client -o yaml | kubectl apply -f -
 
-# ── Deploy via Helm ───────────────────────────────────────────
+# ── Build and load local images ─────────────────────────────────
+info "Building and loading local microservice Docker images..."
+docker build -t nexusmcp/woocommerce-mcp:local "${REPO_ROOT}/services/woocommerce-mcp"
+kind load docker-image nexusmcp/woocommerce-mcp:local --name "$CLUSTER_NAME"
+
+docker build -t nexusmcp/time-mcp:local "${REPO_ROOT}/services/time-mcp"
+kind load docker-image nexusmcp/time-mcp:local --name "$CLUSTER_NAME"
+
+docker build -t nexusmcp/fetch-mcp:local "${REPO_ROOT}/services/fetch-mcp"
+kind load docker-image nexusmcp/fetch-mcp:local --name "$CLUSTER_NAME"
+
+docker build -t nexusmcp/gateway:local "${REPO_ROOT}/services/gateway"
+kind load docker-image nexusmcp/gateway:local --name "$CLUSTER_NAME"
+
+docker build -t nexusmcp/frontend:local "${REPO_ROOT}/services/frontend"
+kind load docker-image nexusmcp/frontend:local --name "$CLUSTER_NAME"
 info "Deploying NexusMCP via Helm..."
 helm upgrade --install nexusmcp "${REPO_ROOT}/helm/nexusmcp" \
   --namespace "$NAMESPACE" \

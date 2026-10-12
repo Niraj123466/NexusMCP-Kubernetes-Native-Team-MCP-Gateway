@@ -1,160 +1,203 @@
-# NexusMCP
+# NexusMCP — Team MCP Gateway & WooCommerce Platform
 
-A production-oriented **Team MCP Gateway Platform** built on Kubernetes.  
-Run WooCommerce, manage MCP upstream servers, and let your team interact with them through a unified gateway and AI chat interface.
-
----
-
-## Architecture at a Glance
-
-```
-Browser / External MCP Client
-        │
-   NGINX Ingress
-        │
-   ┌────┴──────────┐
-   │ React Dashboard│  ← management UI
-   └───────────────┘
-        │ REST API
-   ┌────┴──────────┐
-   │ Gateway       │  ← FastAPI + FastMCP
-   │ /api/*        │     auth, audit, aggregation
-   │ /mcp          │     single MCP endpoint
-   └────┬──────────┘
-        │ cluster-internal only
-   ┌────┴─────────────────────────────┐
-   │  WooCommerce MCP  Time  Fetch    │  ← upstream MCP servers
-   └──────────────────────────────────┘
-        │
-   WordPress + WooCommerce (MariaDB)
-```
+A production-oriented **Team MCP Gateway Platform** running on Kubernetes.  
+Host WooCommerce with automated database persistence, aggregate internal and external Model Context Protocol (MCP) servers over Streamable HTTP, manage team access control with cryptographic audit logging, and execute AI agent workflows powered by Google Gemini or local Ollama models.
 
 ---
 
-## Prerequisites
+## Architecture Overview
 
-| Tool | Minimum version | Install |
+```
+                      Browser / External MCP Client
+                                     │
+                             NGINX Ingress
+                     (localhost:9080 / Port 80/443)
+                                     │
+           ┌─────────────────────────┴─────────────────────────┐
+           ▼                                                   ▼
+┌──────────────────────┐                           ┌───────────────────────┐
+│ React 18 Dashboard   │                           │ Gateway API & MCP     │
+│ (Vite + TailwindCSS) │ ─── proxy /api & /mcp ──► │ (FastAPI + FastMCP)   │
+│ app.nexusmcp.local   │                           │ api.nexusmcp.local    │
+└──────────────────────┘                           └───────────┬───────────┘
+                                                               │
+                         ┌─────────────────────────────────────┼─────────────────────────────────────┐
+                         │ (Internal Cluster NetworkPolicies)  │                                     │
+                         ▼                                     ▼                                     ▼
+             ┌─────────────────────────┐           ┌────────────────────────┐            ┌───────────────────────┐
+             │ woocommerce-mcp-svc:8001│           │ time-mcp-svc:8002      │            │ fetch-mcp-svc:8003    │
+             │ FastMCP Streamable HTTP │           │ FastMCP Streamable HTTP│            │ FastMCP SSRF Guard    │
+             └───────────┬─────────────┘           └────────────────────────┘            └───────────────────────┘
+                         │ REST API (X-Forwarded-Proto: https)
+                         ▼
+             ┌─────────────────────────┐
+             │ WordPress + WooCommerce │ (store.nexusmcp.local:9080)
+             │ MariaDB 11 StatefulSet  │
+             └─────────────────────────┘
+```
+
+---
+
+## Key Features
+
+1. **WordPress & WooCommerce on Kubernetes:**
+   - Dedicated MariaDB 11 StatefulSet and WordPress 6.7 Deployment with persistent volumes.
+   - Bootstrapped WooCommerce with automated sample catalog, store configuration, and internal API keys.
+2. **Custom WooCommerce MCP Server (`services/woocommerce-mcp`):**
+   - Built on `FastMCP` exposing 5 operational tools (`list_products`, `get_product`, `create_product`, `update_product_stock`, `list_orders`).
+   - Transported over MCP Streamable HTTP.
+3. **Core Utility MCP Servers:**
+   - `services/time-mcp`: stdlib `zoneinfo` time and timezone utility server.
+   - `services/fetch-mcp`: SSRF-protected web content and API fetcher blocking loopback, AWS metadata (169.254.169.254), private ranges (10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16), and non-HTTP schemes.
+4. **Unified Gateway Aggregator & Proxy (`services/gateway`):**
+   - Dynamic discovery and pooling of upstream MCP servers.
+   - Automatic namespacing (`<slug>__<tool_name>`).
+   - Unified `/mcp` Streamable HTTP endpoint for external agents (Cursor, Claude Desktop, Windsurf).
+   - High-entropy API key management (bcrypt-hashed with truncated prefix indexing).
+   - Immutable audit logging to PostgreSQL with HMAC-SHA256 argument hashing and latency measurement.
+5. **AI Chat Agent (`/api/chat`):**
+   - Multi-turn autonomous tool coordination loop.
+   - Provider-agnostic adapter architecture:
+     - **Google Gemini**: Uses official `google-genai` SDK (`gemini-2.0-flash`).
+     - **Ollama**: OpenAI-compatible client for local offline models (`llama3.1`, `qwen2.5`, `mistral`).
+6. **Modern React Dashboard (`services/frontend`):**
+   - Glassmorphic dark UI built with React 18, Vite, TypeScript, and Tailwind CSS.
+   - Interactive AI Chat Agent with execution inspect cards and suggested prompts.
+   - Upstream Servers registry with live health status, tool counts, and 1-click sync.
+   - Aggregated Tools catalog with JSON schema inspector and live test runner sandbox.
+   - Audit logs table with filtering by outcome, latency, and cryptographic hashes.
+   - API Key issuance and revocation.
+
+---
+
+## Aggregated MCP Tools Catalog (8 Live Tools)
+
+| Tool Name | Upstream Microservice | Description |
 |---|---|---|
-| Docker | 24+ | [docs.docker.com](https://docs.docker.com) |
-| kind | 0.20+ | `brew install kind` |
-| kubectl | v1.28+ | `brew install kubectl` |
-| Helm | 4+ | `brew install helm` |
-| Node.js | 20+ | `brew install node` |
-| Python | 3.10+ (3.12 recommended for services) | `brew install python@3.12` |
+| `woocommerce__list_products` | `woocommerce-mcp` | Paginated product search with pricing, inventory & category filtering |
+| `woocommerce__get_product` | `woocommerce-mcp` | Full product details including SKU, attributes, and stock count |
+| `woocommerce__create_product` | `woocommerce-mcp` | Create new simple products with price and inventory management |
+| `woocommerce__update_product_stock`| `woocommerce-mcp` | Modify product inventory quantity and stock status |
+| `woocommerce__list_orders` | `woocommerce-mcp` | Query customer orders by status (`processing`, `completed`) |
+| `time__get_current_time` | `time-mcp` | Current ISO time with IANA timezone support |
+| `time__list_timezones` | `time-mcp` | List canonical available IANA timezones |
+| `fetch__fetch_url` | `fetch-mcp` | Safe external HTTP GET with strict SSRF filtering |
 
 ---
 
-## Quick Start — Local Kubernetes (kind)
+## Quick Start — Local Development (kind)
 
+### 1. Prerequisites
+- Docker 24+
+- `kind` 0.20+ (`brew install kind`)
+- `kubectl` v1.28+ (`brew install kubectl`)
+- `helm` 3+ (`brew install helm`)
+- Node.js 20+ (`brew install node`)
+- Python 3.12+
+
+### 2. Configure Environment
 ```bash
-# 1. Clone and enter the repo
-git clone <repo-url> NexusMCP && cd NexusMCP
-
-# 2. Copy and fill environment variables
 cp .env.example .env
-# Edit .env — at minimum set LLM_PROVIDER and credentials
+# Set LLM_PROVIDER=gemini and GEMINI_API_KEY (or LLM_PROVIDER=ollama)
+```
 
-# 3. Run the bootstrap script (creates cluster, installs ingress, deploys everything)
+### 3. Bootstrap Cluster & Deploy Platform
+```bash
+chmod +x scripts/*.sh
 ./scripts/setup-local.sh
 ```
 
-After setup, add these entries to `/etc/hosts`:
+### 4. Configure Local DNS
+Add the following lines to `/etc/hosts`:
 ```
 127.0.0.1  store.nexusmcp.local:9080
 127.0.0.1  api.nexusmcp.local:9080
 127.0.0.1  app.nexusmcp.local:9080
 ```
+*(Note: If connecting directly on port 9080, include `Host:` headers or access via `http://localhost:9080`)*
 
-| URL | Service |
-|---|---|
-| http://store.nexusmcp.local:9080 | WordPress / WooCommerce storefront |
-| http://app.nexusmcp.local:9080 | NexusMCP Dashboard |
-| http://api.nexusmcp.local:9080/mcp | MCP Gateway endpoint |
-| http://api.nexusmcp.local:9080/docs | Gateway API docs |
-
----
-
-## LLM Configuration
-
-NexusMCP supports two LLM providers. Set `LLM_PROVIDER` in your `.env`:
-
-### Google Gemini (default)
-```env
-LLM_PROVIDER=gemini
-GEMINI_API_KEY=your-key-here
-GEMINI_MODEL=gemini-2.0-flash   # or gemini-2.5-pro
-```
-Get a key at [aistudio.google.com](https://aistudio.google.com).
-
-### Ollama (local, no API key needed)
-```env
-LLM_PROVIDER=ollama
-OLLAMA_BASE_URL=http://localhost:11434
-OLLAMA_MODEL=llama3.1   # any model with tool-calling support
-```
-Install Ollama: `brew install ollama`, then `ollama pull llama3.1`.
+### 5. Service Endpoints
+| Service | Local Ingress URL | Port |
+|---|---|---|
+| **React Dashboard** | `http://app.nexusmcp.local:9080` | 9080 (Ingress) / 3000 (Internal) |
+| **Gateway REST API** | `http://api.nexusmcp.local:9080` | 9080 (Ingress) / 8000 (Internal) |
+| **Gateway MCP Endpoint** | `http://api.nexusmcp.local:9080/mcp` | 9080 (Streamable HTTP) |
+| **Swagger / OpenAPI** | `http://api.nexusmcp.local:9080/docs` | 9080 |
+| **WooCommerce Store** | `http://store.nexusmcp.local:9080` | 9080 (Ingress) / 80 (Internal) |
 
 ---
 
-## Manual Helm Deployment
+## Production VPS Deployment (k3s / Cloud Kubernetes)
+
+NexusMCP uses an umbrella Helm chart (`helm/nexusmcp`) supporting identical resource schemas across environments:
 
 ```bash
-# Local (kind)
+# Production deployment on k3s or managed cloud Kubernetes
 helm upgrade --install nexusmcp ./helm/nexusmcp \
-  -f helm/nexusmcp/values-local.yaml \
-  --namespace nexusmcp --create-namespace
-
-# Production-like (k3s VPS)
-helm upgrade --install nexusmcp ./helm/nexusmcp \
-  -f helm/nexusmcp/values-production.yaml \
-  --namespace nexusmcp --create-namespace \
-  --set secrets.geminiApiKey=$GEMINI_API_KEY \
-  --set secrets.postgresPassword=$POSTGRES_PASSWORD
+  --namespace nexusmcp \
+  --create-namespace \
+  -f ./helm/nexusmcp/values-production.yaml \
+  --set secrets.geminiApiKey="$GEMINI_API_KEY" \
+  --set secrets.postgresPassword="$POSTGRES_PASSWORD" \
+  --set secrets.gatewaySecretKey="$GATEWAY_SECRET_KEY"
 ```
 
 ---
 
-## Project Structure
+## Running the Automated Test Suite
 
-```
-NexusMCP/
-├── services/
-│   ├── woocommerce-mcp/   # WooCommerce MCP server (Python, FastMCP)
-│   ├── gateway/           # MCP Gateway + Platform API (Python, FastAPI)
-│   ├── time-mcp/          # Time MCP server (lightweight)
-│   └── fetch-mcp/         # Fetch MCP server (controlled HTTP fetch)
-├── frontend/              # React dashboard (TypeScript, Tailwind, shadcn/ui)
-├── helm/nexusmcp/         # Umbrella Helm chart
-├── docs/                  # Architecture, security, deployment, testing docs
-├── scripts/               # Setup and utility scripts
-├── tests/e2e/             # End-to-end acceptance tests
-└── .env.example           # Environment variable reference
-```
-
----
-
-## Documentation
-
-- [Architecture](docs/architecture.md)
-- [Security](docs/security.md)
-- [Deployment](docs/deployment.md)
-- [Testing](docs/testing.md)
-
----
-
-## Development
-
+### 1. Unit & Component Tests
 ```bash
-# Run gateway locally (with hot reload)
-cd services/gateway
-pip install -e ".[dev]"
-uvicorn gateway.main:app --reload --port 8000
+# Gateway unit tests (auth, crypto, aggregator, agent adapters)
+cd services/gateway && pytest -v
 
-# Run frontend dev server
-cd frontend
-npm install && npm run dev
+# WooCommerce MCP server tests
+cd services/woocommerce-mcp && pytest -v
 
-# Run tests
-pytest services/gateway/tests/ -v
-pytest tests/e2e/ -v
+# Time MCP server tests
+cd services/time-mcp && pytest -v
+
+# Fetch MCP server & SSRF guard tests
+cd services/fetch-mcp && pytest -v
 ```
+
+### 2. Live Kubernetes End-to-End Acceptance Tests (19 Tests)
+```bash
+# Runs full integration suite against the live in-cluster services
+services/gateway/.venv/bin/pytest tests/e2e/test_platform_e2e.py -v
+```
+
+Tests verify:
+- Ingress reachability and health checks across Gateway & Frontend
+- X-API-Key and Authorization Bearer authentication
+- Upstream server registration & synchronization
+- Namespaced tool discovery across all 3 microservices
+- Direct tool execution (WooCommerce create/get/list, Time, Fetch)
+- Strict SSRF protection against 127.0.0.1, AWS metadata, and Kubernetes cluster IPs
+- Cryptographic HMAC-SHA256 argument audit logging to PostgreSQL
+- Multi-turn AI Chat agent execution
+- MCP Streamable HTTP JSON-RPC handshake (`mcp-session-id`)
+
+---
+
+## Connecting External MCP Clients
+
+External IDEs and AI tools (such as Cursor, Windsurf, or Claude Desktop) connect to all tools through one unified endpoint:
+
+```json
+{
+  "mcpServers": {
+    "nexusmcp": {
+      "url": "http://api.nexusmcp.local:9080/mcp",
+      "headers": {
+        "X-API-Key": "nexus_CAuAv_SsN5eLFAEDdqIy5N7XNFJB5MRodK9pJ_bypzY"
+      }
+    }
+  }
+}
+```
+
+---
+
+## License
+MIT
