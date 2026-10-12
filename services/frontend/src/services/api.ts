@@ -24,6 +24,7 @@ export function setStoredApiKey(key: string): void {
 export function getStoredBaseUrl(): string {
   const custom = localStorage.getItem(STORAGE_KEY_BASE_URL);
   if (custom) return custom;
+  if (import.meta.env.VITE_API_BASE_URL) return import.meta.env.VITE_API_BASE_URL;
   // If loaded in browser at app.nexusmcp.local:9080 -> api.nexusmcp.local:9080
   if (typeof window !== "undefined" && window.location.hostname.includes("nexusmcp.local")) {
     const port = window.location.port ? `:${window.location.port}` : "";
