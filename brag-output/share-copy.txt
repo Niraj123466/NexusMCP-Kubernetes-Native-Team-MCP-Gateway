@@ -1,0 +1,4 @@
+Meet NexusMCP: The Kubernetes-native Team Model Context Protocol Gateway.
+Unify distributed microservices (WooCommerce, Fetch, Time) into one authenticated, audited control plane for autonomous AI agents.
+Live at https://nexusmcp.nirajmore.in
+Code: https://github.com/Niraj123466/NexusMCP-Kubernetes-Native-Team-MCP-Gateway
